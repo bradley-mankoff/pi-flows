@@ -1,0 +1,20 @@
+#!/bin/sh
+# file-exists <path>: passes when the path exists in the Run's worktree, or, for a relative
+# path, in the Run's artifacts folder. Research nodes use it for findings written under
+# $ARTIFACTS_DIR, demo nodes for the video they recorded; a build node can name a file in
+# the worktree.
+set -eu
+path=${1:?file-exists: give the path to look for}
+if [ -e "$path" ]; then
+	exit 0
+fi
+case $path in
+/*) ;;
+*)
+	if [ -n "${ARTIFACTS_DIR:-}" ] && [ -e "$ARTIFACTS_DIR/$path" ]; then
+		exit 0
+	fi
+	;;
+esac
+printf 'file-exists: %s does not exist.\n' "$path"
+exit 1

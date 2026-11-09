@@ -1,0 +1,15 @@
+#!/bin/sh
+# check-passes: runs the project's check command, FLOWS_CHECK, in the worktree and passes
+# when it exits 0. The Flows extension sets FLOWS_CHECK from the marker's check field. On
+# failure it prints the last lines of the check's output, so the agent is sent back with
+# what broke.
+set -eu
+if [ -z "${FLOWS_CHECK:-}" ]; then
+	printf '%s\n' 'check-passes: FLOWS_CHECK is not set.'
+	exit 1
+fi
+if out=$(sh -c "$FLOWS_CHECK" 2>&1); then
+	exit 0
+fi
+printf "check-passes: the project's check failed:\n%s\n" "$(printf '%s\n' "$out" | tail -40)"
+exit 1

@@ -1,0 +1,10 @@
+{
+  "name": "pi-flows",
+  "version": "0.1.0",
+  "description": "Flows for pi: short checks named in a prompt run when the agent tries to finish, and a failing check sends it back.",
+  "license": "MIT",
+  "keywords": ["pi-package"],
+  "pi": { "extensions": ["./extensions"] },
+  "peerDependencies": { "@earendil-works/pi-coding-agent": "*" },
+  "scripts": { "test": "node --experimental-strip-types --no-warnings --test tests/*.test.ts" }
+}

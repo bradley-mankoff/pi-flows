@@ -1,0 +1,11 @@
+#!/bin/sh
+# changed-files: passes when the worktree's tree differs from the tree the node started on.
+# The Flows extension records that start tree in FLOWS_START_TREE. An empty commit leaves
+# the tree the same, so it fails.
+set -eu
+start=${FLOWS_START_TREE:?changed-files: FLOWS_START_TREE is not set}
+tree=$("$(dirname "$0")/worktree-tree")
+if [ "$tree" = "$start" ]; then
+	printf '%s\n' 'changed-files: the work changed no files; an empty commit does not count.'
+	exit 1
+fi

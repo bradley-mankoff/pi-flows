@@ -1,0 +1,11 @@
+#!/bin/sh
+# no-changes: passes when the worktree's tree is the same as the tree the node started on.
+# The Flows extension records that start tree in FLOWS_START_TREE. Research nodes use it so
+# they write their findings outside the repo and leave the checkout alone.
+set -eu
+start=${FLOWS_START_TREE:?no-changes: FLOWS_START_TREE is not set}
+tree=$("$(dirname "$0")/worktree-tree")
+if [ "$tree" != "$start" ]; then
+	printf '%s\n' 'no-changes: the work changed files, and this node must not change any.'
+	exit 1
+fi

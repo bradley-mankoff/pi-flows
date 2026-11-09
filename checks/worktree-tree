@@ -1,0 +1,12 @@
+#!/bin/sh
+# worktree-tree: prints the git tree of the worktree it runs in, as the files stand now.
+# It reads them through a temporary index, so uncommitted changes count and a worktree
+# that starts with changes uses them as its baseline. The Flows extension takes a node's
+# start tree with it, and changed-files and no-changes compare the tree it prints with
+# that one, so a correction to how a tree is read happens here once.
+set -eu
+index=$(mktemp "${TMPDIR:-/tmp}/flows-index.XXXXXX")
+trap 'rm -f "$index"' EXIT
+GIT_INDEX_FILE=$index git read-tree HEAD
+GIT_INDEX_FILE=$index git add -A
+GIT_INDEX_FILE=$index git write-tree
