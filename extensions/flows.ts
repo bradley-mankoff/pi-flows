@@ -32,7 +32,11 @@
  *   FLOWS_FINAL_MESSAGE  a file holding the agent's final message, which closing-account reads
  *
  * The current tree comes from checks/worktree-tree, the same script this extension takes
- * the node's start tree with.
+ * the node's start tree with. The start tree is kept in the Run's artifacts folder at
+ * flows-start-tree: Archon opens a new pi session for each attempt of a node, and a retry
+ * after the work's commit would otherwise take the committed tree as its baseline, so
+ * changed-files would compare the tree with itself. A node's first attempt writes the
+ * file, later attempts read it, and a fresh node has a fresh artifacts folder.
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -195,6 +199,35 @@ const recordFailures = (marker: Marker, failures: string[]): void => {
 /** A session's state at this moment: the tree it starts on, and no send-backs yet. */
 const newSession = (ctx: ExtensionContext): Session => ({ startTree: startTree(ctx.cwd), sendBacks: 0 });
 
+/**
+ * Keep the node's start tree for every attempt of it. The first attempt writes the tree
+ * it opened on to the Run's artifacts folder; a later attempt reads that tree back instead
+ * of taking the tree it opens on, so the work's own commit does not become the baseline.
+ */
+const keepStartTree = (session: Session, marker: Marker): void => {
+	if (marker.artifacts === "") return;
+	const path = join(marker.artifacts, "flows-start-tree");
+	try {
+		const kept = existsSync(path) ? readFileSync(path, "utf8").trim() : "";
+		if (kept !== "") {
+			session.startTree = kept;
+			return;
+		}
+		if (session.startTree === undefined) return;
+		mkdirSync(marker.artifacts, { recursive: true });
+		writeFileSync(path, `${session.startTree}\n`);
+	} catch (error) {
+		console.error(`flows: cannot keep the node's start tree in ${marker.artifacts}: ${(error as Error).message}`);
+	}
+};
+
+/** Take a session's marker, which fixes the start tree the node's checks compare against. */
+const rememberMarker = (session: Session, marker: Marker): void => {
+	if (session.marker) return;
+	session.marker = marker;
+	keepStartTree(session, marker);
+};
+
 /** A session's state, opened on first use and kept, so its start tree and send-backs stay put. */
 const sessionFor = (ctx: ExtensionContext): Session => {
 	const id = ctx.sessionManager.getSessionId();
@@ -212,7 +245,8 @@ const onSessionStart = (_event: SessionStartEvent, ctx: ExtensionContext): void 
 const onBeforeAgentStart = (event: BeforeAgentStartEvent, ctx: ExtensionContext): void => {
 	const session = sessionFor(ctx);
 	const prompt = event.messageType === "user" ? event.prompt : textOf(event.message);
-	session.marker ??= markerIn(event.systemPrompt) ?? markerIn(prompt);
+	const marker = session.marker ?? markerIn(event.systemPrompt) ?? markerIn(prompt);
+	if (marker) rememberMarker(session, marker);
 };
 
 /**
@@ -228,7 +262,7 @@ const onBeforeSettle = (
 	const session = sessionFor(ctx);
 	const marker = session.marker ?? markerOf(ctx, event);
 	if (!marker) return undefined;
-	session.marker = marker;
+	rememberMarker(session, marker);
 	session.checks ??= checksFor(marker);
 	if (session.checks.length === 0) return undefined;
 	const checks = session.checks;

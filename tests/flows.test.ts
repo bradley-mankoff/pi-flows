@@ -66,12 +66,17 @@ const writeBead = (workspace: Workspace, design: string): void => {
 const clearWorkspace = (workspace: Workspace): void => rmSync(workspace.dir, { recursive: true, force: true });
 
 /** The marker line README.md documents: the node, Bead, paths and optional check. */
-const markerFor = (workspace: Workspace, node: string, check?: string): string =>
+const markerFor = (
+	workspace: Workspace,
+	node: string,
+	check?: string,
+	artifacts: string = workspace.artifacts,
+): string =>
 	`FLOWS ${JSON.stringify({
 		node,
 		bead: "pi-flows-1",
 		flows: workspace.flows,
-		artifacts: workspace.artifacts,
+		artifacts,
 		...(check === undefined ? {} : { check }),
 	})}`;
 
@@ -104,7 +109,9 @@ const sentBacksOf = (run: Run): SessionLine[] => run.session.filter((entry) => e
 const runPi = (workspace: Workspace, prompt: string, steps: Step[]): Run => {
 	const requestLog = join(workspace.dir, "requests.jsonl");
 	const script = join(workspace.dir, "script.json");
+	const sessionsBefore = new Set(sessionFiles(join(workspace.agentDir, "sessions")));
 	writeFileSync(script, JSON.stringify(steps));
+	writeFileSync(requestLog, "");
 	const result = spawnSync(
 		"pi",
 		["-ns", "-ne", "-e", testProvider, "-e", flowsExtension, "-p", "--model", "test/agent", prompt],
@@ -125,7 +132,7 @@ const runPi = (workspace: Workspace, prompt: string, steps: Step[]): Run => {
 			},
 		},
 	);
-	const created = sessionFiles(join(workspace.agentDir, "sessions"));
+	const created = sessionFiles(join(workspace.agentDir, "sessions")).filter((path) => !sessionsBefore.has(path));
 	return {
 		status: result.status,
 		stdout: result.stdout,
@@ -133,6 +140,17 @@ const runPi = (workspace: Workspace, prompt: string, steps: Step[]): Run => {
 		requests: readJsonLines<Request>(requestLog),
 		session: created[0] ? readJsonLines<SessionLine>(created[0]) : [],
 	};
+};
+
+/** The worktree's tree as a check reads it: the script the extension takes a node's start tree with. */
+const treeOf = (cwd: string): string =>
+	execFileSync(join(root, "checks", "worktree-tree"), [], { cwd, encoding: "utf8" }).trim();
+
+/** Commit a file in the temporary repo, as the work agent's commit does. */
+const commitFile = (repo: string, name: string, text: string, message: string): void => {
+	writeFileSync(join(repo, name), text);
+	execFileSync("git", ["-C", repo, "add", name]);
+	execFileSync("git", ["-C", repo, "commit", "-qm", message]);
 };
 
 test("a failing check sends the agent back with the check's message, and a later turn that changes a file lets it finish", () => {
@@ -243,6 +261,37 @@ test("a file changed in the agent's first turn counts, because the start tree is
 		assert.equal(run.status, 0, run.stderr || run.stdout);
 		assert.equal(run.requests.length, 2);
 		assert.deepEqual(sentBacksOf(run), []);
+	} finally {
+		clearWorkspace(workspace);
+	}
+});
+
+test("a node's start tree is kept in its Run's artifacts folder, so an attempt after the work's commit still passes changed-files", () => {
+	const workspace = makeWorkspace({ work: ["changed-files"] });
+	try {
+		const startTreeFile = join(workspace.artifacts, "flows-start-tree");
+		const baseTree = treeOf(workspace.repo);
+		const firstAttempt = runPi(workspace, `${markerFor(workspace, "work")}\nDo the work.`, [{ text: "done" }]);
+		assert.equal(firstAttempt.status, 0, firstAttempt.stderr || firstAttempt.stdout);
+		assert.equal(readFileSync(startTreeFile, "utf8").trim(), baseTree);
+
+		commitFile(workspace.repo, "work.txt", "the work\n", "the work");
+
+		const retry = runPi(workspace, `${markerFor(workspace, "work")}\nDo the work, again.`, [{ text: "done" }]);
+		assert.equal(retry.status, 0, retry.stderr || retry.stdout);
+		assert.equal(retry.requests.length, 1);
+		assert.deepEqual(sentBacksOf(retry), []);
+		assert.equal(readFileSync(startTreeFile, "utf8").trim(), baseTree);
+
+		const otherArtifacts = join(workspace.dir, "other-artifacts");
+		const control = runPi(workspace, `${markerFor(workspace, "work", undefined, otherArtifacts)}\nDo the work, again.`, [
+			{ text: "done" },
+		]);
+		assert.equal(control.status, 0, control.stderr || control.stdout);
+		assert.equal(control.requests.length, 3);
+		const sentBack = sentBacksOf(control);
+		assert.equal(sentBack.length, 2);
+		assert.match(textOf(sentBack[0]), /changed-files: the work changed no files; an empty commit does not count\./);
 	} finally {
 		clearWorkspace(workspace);
 	}
