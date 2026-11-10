@@ -32,7 +32,11 @@
  *   FLOWS_FINAL_MESSAGE  a file holding the agent's final message, which closing-account reads
  *
  * The current tree comes from checks/worktree-tree, the same script this extension takes
- * the node's start tree with.
+ * the node's start tree with. The start tree is kept in the Run's artifacts folder at
+ * flows-start-tree: Archon opens a new pi session for each attempt of a node, and a retry
+ * after the work's commit would otherwise take the committed tree as its baseline, so
+ * changed-files would compare the tree with itself. A node's first attempt writes the
+ * file, later attempts read it, and a fresh node has a fresh artifacts folder.
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -192,8 +196,43 @@ const recordFailures = (marker: Marker, failures: string[]): void => {
 	}
 };
 
-/** A session's state at this moment: the tree it starts on, and no send-backs yet. */
+/**
+ * A session's state at this moment: the tree it opens on, which the marker may replace
+ * with the tree the Run's artifacts folder kept, and no send-backs yet.
+ */
 const newSession = (ctx: ExtensionContext): Session => ({ startTree: startTree(ctx.cwd), sendBacks: 0 });
+
+/**
+ * Keep one start tree for every attempt at a node. The first attempt writes the tree it
+ * opened on to the Run's artifacts folder; a later attempt reads that tree back instead
+ * of taking the tree it opens on, so the work's own commit does not become the baseline.
+ */
+const keepStartTree = (session: Session, marker: Marker): void => {
+	if (marker.artifacts === "") return;
+	const path = join(marker.artifacts, "flows-start-tree");
+	try {
+		const keptTree = existsSync(path) ? readFileSync(path, "utf8").trim() : "";
+		if (keptTree !== "") {
+			session.startTree = keptTree;
+			return;
+		}
+		if (session.startTree === undefined) return;
+		mkdirSync(marker.artifacts, { recursive: true });
+		writeFileSync(path, `${session.startTree}\n`);
+	} catch (error) {
+		console.error(`flows: cannot keep the node's start tree in ${marker.artifacts}: ${(error as Error).message}`);
+	}
+};
+
+/**
+ * Record a session's first marker, which fixes the start tree its checks compare against:
+ * the tree it opened on, or the one the Run's artifacts folder kept from an earlier attempt.
+ */
+const rememberMarker = (session: Session, marker: Marker): void => {
+	if (session.marker) return;
+	session.marker = marker;
+	keepStartTree(session, marker);
+};
 
 /** A session's state, opened on first use and kept, so its start tree and send-backs stay put. */
 const sessionFor = (ctx: ExtensionContext): Session => {
@@ -203,7 +242,10 @@ const sessionFor = (ctx: ExtensionContext): Session => {
 	return session;
 };
 
-/** A node's start tree is the tree its session opens on; later turns keep the same one. */
+/**
+ * Open a session on the tree it starts on. The marker's arrival replaces that tree with the
+ * one the Run's artifacts folder kept, and later turns keep whichever one is in place.
+ */
 const onSessionStart = (_event: SessionStartEvent, ctx: ExtensionContext): void => {
 	sessions.set(ctx.sessionManager.getSessionId(), newSession(ctx));
 };
@@ -212,7 +254,8 @@ const onSessionStart = (_event: SessionStartEvent, ctx: ExtensionContext): void 
 const onBeforeAgentStart = (event: BeforeAgentStartEvent, ctx: ExtensionContext): void => {
 	const session = sessionFor(ctx);
 	const prompt = event.messageType === "user" ? event.prompt : textOf(event.message);
-	session.marker ??= markerIn(event.systemPrompt) ?? markerIn(prompt);
+	const marker = session.marker ?? markerIn(event.systemPrompt) ?? markerIn(prompt);
+	if (marker) rememberMarker(session, marker);
 };
 
 /**
@@ -228,7 +271,7 @@ const onBeforeSettle = (
 	const session = sessionFor(ctx);
 	const marker = session.marker ?? markerOf(ctx, event);
 	if (!marker) return undefined;
-	session.marker = marker;
+	rememberMarker(session, marker);
 	session.checks ??= checksFor(marker);
 	if (session.checks.length === 0) return undefined;
 	const checks = session.checks;
