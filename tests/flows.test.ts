@@ -65,19 +65,17 @@ const writeBead = (workspace: Workspace, design: string): void => {
 
 const clearWorkspace = (workspace: Workspace): void => rmSync(workspace.dir, { recursive: true, force: true });
 
+/** What a test may change about the marker's optional fields: the check, and the artifacts folder. */
+type MarkerFields = { check?: string; artifacts?: string };
+
 /** The marker line README.md documents: the node, Bead, paths and optional check. */
-const markerFor = (
-	workspace: Workspace,
-	node: string,
-	check?: string,
-	artifacts: string = workspace.artifacts,
-): string =>
+const markerFor = (workspace: Workspace, node: string, fields: MarkerFields = {}): string =>
 	`FLOWS ${JSON.stringify({
 		node,
 		bead: "pi-flows-1",
 		flows: workspace.flows,
-		artifacts,
-		...(check === undefined ? {} : { check }),
+		artifacts: fields.artifacts ?? workspace.artifacts,
+		...(fields.check === undefined ? {} : { check: fields.check }),
 	})}`;
 
 const sessionFiles = (dir: string): string[] =>
@@ -284,7 +282,7 @@ test("a node's start tree is kept in its Run's artifacts folder, so an attempt a
 		assert.equal(readFileSync(startTreeFile, "utf8").trim(), baseTree);
 
 		const otherArtifacts = join(workspace.dir, "other-artifacts");
-		const control = runPi(workspace, `${markerFor(workspace, "work", undefined, otherArtifacts)}\nDo the work, again.`, [
+		const control = runPi(workspace, `${markerFor(workspace, "work", { artifacts: otherArtifacts })}\nDo the work, again.`, [
 			{ text: "done" },
 		]);
 		assert.equal(control.status, 0, control.stderr || control.stdout);
@@ -300,7 +298,7 @@ test("a node's start tree is kept in its Run's artifacts folder, so an attempt a
 test("the marker's check field is the command check-passes runs", () => {
 	const workspace = makeWorkspace({ work: ["check-passes", "changed-files"] });
 	try {
-		const run = runPi(workspace, `${markerFor(workspace, "work", "printf 'work\\n' > work.txt")}\nDo the work.`, [
+		const run = runPi(workspace, `${markerFor(workspace, "work", { check: "printf 'work\\n' > work.txt" })}\nDo the work.`, [
 			{ text: "done" },
 		]);
 		assert.equal(run.status, 0, run.stderr || run.stdout);

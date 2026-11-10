@@ -196,21 +196,24 @@ const recordFailures = (marker: Marker, failures: string[]): void => {
 	}
 };
 
-/** A session's state at this moment: the tree it starts on, and no send-backs yet. */
+/**
+ * A session's state at this moment: the tree it opens on, which the marker may replace
+ * with the tree the Run's artifacts folder kept, and no send-backs yet.
+ */
 const newSession = (ctx: ExtensionContext): Session => ({ startTree: startTree(ctx.cwd), sendBacks: 0 });
 
 /**
- * Keep the node's start tree for every attempt of it. The first attempt writes the tree
- * it opened on to the Run's artifacts folder; a later attempt reads that tree back instead
+ * Keep one start tree for every attempt at a node. The first attempt writes the tree it
+ * opened on to the Run's artifacts folder; a later attempt reads that tree back instead
  * of taking the tree it opens on, so the work's own commit does not become the baseline.
  */
 const keepStartTree = (session: Session, marker: Marker): void => {
 	if (marker.artifacts === "") return;
 	const path = join(marker.artifacts, "flows-start-tree");
 	try {
-		const kept = existsSync(path) ? readFileSync(path, "utf8").trim() : "";
-		if (kept !== "") {
-			session.startTree = kept;
+		const keptTree = existsSync(path) ? readFileSync(path, "utf8").trim() : "";
+		if (keptTree !== "") {
+			session.startTree = keptTree;
 			return;
 		}
 		if (session.startTree === undefined) return;
@@ -221,7 +224,10 @@ const keepStartTree = (session: Session, marker: Marker): void => {
 	}
 };
 
-/** Take a session's marker, which fixes the start tree the node's checks compare against. */
+/**
+ * Record a session's first marker, which fixes the start tree its checks compare against:
+ * the tree it opened on, or the one the Run's artifacts folder kept from an earlier attempt.
+ */
 const rememberMarker = (session: Session, marker: Marker): void => {
 	if (session.marker) return;
 	session.marker = marker;
@@ -236,7 +242,10 @@ const sessionFor = (ctx: ExtensionContext): Session => {
 	return session;
 };
 
-/** A node's start tree is the tree its session opens on; later turns keep the same one. */
+/**
+ * Open a session on the tree it starts on. The marker's arrival replaces that tree with the
+ * one the Run's artifacts folder kept, and later turns keep whichever one is in place.
+ */
 const onSessionStart = (_event: SessionStartEvent, ctx: ExtensionContext): void => {
 	sessions.set(ctx.sessionManager.getSessionId(), newSession(ctx));
 };
