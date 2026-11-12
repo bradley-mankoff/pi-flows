@@ -6,6 +6,6 @@ set -eu
 start=${FLOWS_START_TREE:?no-changes: FLOWS_START_TREE is not set}
 tree=$("$(dirname "$0")/worktree-tree")
 if [ "$tree" != "$start" ]; then
-	printf '%s\n' 'no-changes: the work changed files, and this node must not change any.'
+	printf '%s\n' 'no-changes: the work changed files, and this node must not change any. Undo the changes to files (this node only reads), and give the answer in the final message.'
 	exit 1
 fi

@@ -11,20 +11,23 @@
  *
  * On pi 1.3.0's agent_before_settle, the last point where an extension can keep the agent
  * going, this extension reads the marker from the prompt through the handler's ctx, runs
- * the node's checks in the Run's worktree, and sends the agent back with a failing check's
- * message. Two send-backs are allowed per node; when the agent finishes with a check still
- * failing, the failures go to the Run's artifacts folder as flows-failed.txt, and the next
- * node or the Project Manager can read them.
+ * the node's checks in the Run's worktree, and sends the agent back with a line naming the
+ * send-back and the failing checks' messages. Each check's message ends with what to do
+ * about it, so the agent knows how to get past it. Two send-backs are allowed per node;
+ * when the agent finishes with a check still failing, the failures go to the Run's
+ * artifacts folder as flows-failed.txt, and the next node or the Project Manager can read
+ * them.
  *
  * The marker is read from the context, never from process.env: a Run's nodes share this
  * loaded extension, so this process's environment is not one node's. Handlers use their
  * ctx and this file's own state, never pi.*, for the same reason.
  *
- * Checks live in the checks/ folder beside this package's extensions/, one short script
- * each, and exit 0 to pass or print the message to send back and exit 1 to fail. Each gets
- * the worktree as its working directory, the args its flows line names, and this pi
- * process's environment — which carries the project's .archon/.env, the file Archon loads
- * at start-up — plus these values this extension sets:
+ * Check scripts live in the checks/ folder beside this package's extensions/, one short
+ * script each, and exit 0 to pass or print, and exit 1 to fail, the message to send back;
+ * that message ends with a sentence saying what to do about the failure, in the agent's
+ * terms. Each gets the worktree as its working directory, the args its flows line names,
+ * and this pi process's environment — which carries the project's .archon/.env, the file
+ * Archon loads at start-up — plus these values this extension sets:
  *
  *   ARTIFACTS_DIR        the Run's artifacts folder, from the marker
  *   FLOWS_CHECK          the check command, from the marker's check field
@@ -260,8 +263,9 @@ const onBeforeAgentStart = (event: BeforeAgentStartEvent, ctx: ExtensionContext)
 
 /**
  * Run the node's checks when its agent tries to finish. A failing check sends the agent
- * back with its message; after two send-backs the agent may finish, and the failures go
- * to the artifacts folder. A session without a marker is left alone.
+ * back with a line naming the send-back and each failing check's message; after two
+ * send-backs the agent may finish, and the failures go to the artifacts folder. A session
+ * without a marker is left alone.
  */
 const onBeforeSettle = (
 	event: AgentBeforeSettleEvent,
@@ -293,12 +297,13 @@ const onBeforeSettle = (
 		return undefined;
 	}
 	session.sendBacks += 1;
+	const sendBackLine = `This is send-back ${String(session.sendBacks)} of ${String(MAX_SEND_BACKS)}; you may not finish until the checks pass.`;
 	return {
 		entries: [
 			{
 				type: "custom_message",
 				customType: "flows",
-				content: failures.join("\n\n"),
+				content: `${sendBackLine}\n\n${failures.join("\n\n")}`,
 				display: true,
 			},
 		],
