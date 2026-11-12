@@ -16,5 +16,5 @@ case $path in
 	fi
 	;;
 esac
-printf 'file-exists: %s does not exist.\n' "$path"
+printf 'file-exists: %s does not exist. Write the named file at that path before finishing.\n' "$path"
 exit 1

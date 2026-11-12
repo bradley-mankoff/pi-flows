@@ -13,11 +13,11 @@ if [ -n "$heading" ]; then
 	account=$(tail -n "+$((heading + 1))" "$path")
 fi
 if ! printf '%s\n' "$account" | grep -q -i -E '^[[:space:]]*-[[:space:]]*(met|unmet):'; then
-	printf '%s\n' 'closing-account: the final message has no closing account; end it with "Acceptance criteria:" and one line per criterion, "- met: <criterion> — <evidence>" or "- unmet: <criterion> — <what is missing>".'
+	printf '%s\n' 'closing-account: the final message has no closing account. End it with the account in the stated form: "Acceptance criteria:" and one line per criterion, "- met: <criterion> — <evidence>" or "- unmet: <criterion> — <what is missing>".'
 	exit 1
 fi
 unmet=$(printf '%s\n' "$account" | grep -i -E '^[[:space:]]*-[[:space:]]*unmet:' || true)
 if [ -n "$unmet" ]; then
-	printf 'closing-account: the closing account marks a criterion unmet:\n%s\n' "$unmet"
+	printf 'closing-account: the closing account marks a criterion unmet:\n%s\n\nDo the work each unmet line names, run the project'"'"'s check again, then end with a fresh account; mark a criterion met only with evidence of it, never by rewording the line.\n' "$unmet"
 	exit 1
 fi
