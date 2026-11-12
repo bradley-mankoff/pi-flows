@@ -3,8 +3,9 @@
 # acceptance criteria: the line "Acceptance criteria:" and one line per criterion, marked
 # "- met:" with its evidence or "- unmet:" with what is missing. It fails when the account
 # is missing, and when a line is marked unmet it prints that line, so the agent is sent
-# back with what it said was still missing. The Flows extension writes the agent's final
-# message to the file FLOWS_FINAL_MESSAGE names.
+# back with what it said was still missing. Each failure message ends with what to do about
+# it: end with the account, or do the work an unmet line names. The Flows extension writes
+# the agent's final message to the file FLOWS_FINAL_MESSAGE names.
 set -eu
 path=${FLOWS_FINAL_MESSAGE:?closing-account: FLOWS_FINAL_MESSAGE is not set}
 heading=$(grep -n -i -E '^[[:space:]]*#*[[:space:]]*acceptance criteria:?[[:space:]]*$' "$path" | tail -1 | cut -d: -f1)
@@ -18,6 +19,6 @@ if ! printf '%s\n' "$account" | grep -q -i -E '^[[:space:]]*-[[:space:]]*(met|un
 fi
 unmet=$(printf '%s\n' "$account" | grep -i -E '^[[:space:]]*-[[:space:]]*unmet:' || true)
 if [ -n "$unmet" ]; then
-	printf 'closing-account: the closing account marks a criterion unmet:\n%s\n\nDo the work each unmet line names, run the project'"'"'s check again, then end with a fresh account; mark a criterion met only with evidence of it, never by rewording the line.\n' "$unmet"
+	printf "closing-account: the closing account marks a criterion unmet:\n%s\n\nDo the work each unmet line names, run the project's check again, then end with a fresh account; mark a criterion met only with evidence of it, never by rewording the line.\n" "$unmet"
 	exit 1
 fi

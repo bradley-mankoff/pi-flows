@@ -27,8 +27,8 @@ definition of done differs gets a forked Workflow with that node's flows file.
 ## What a send-back says
 
 When the agent tries to finish and a check fails, the extension sends it back with one
-message. It begins with a line naming the send-back, then each failing check's message,
-which ends with what to do about it in the agent's terms:
+message. It begins with a line naming the send-back, then the message of each check script
+that failed, which ends with what to do about it in the agent's terms:
 
 ```
 This is send-back 1 of 2; you may not finish until the checks pass.

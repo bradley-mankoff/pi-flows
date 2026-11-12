@@ -144,7 +144,7 @@ const runPi = (workspace: Workspace, prompt: string, steps: Step[]): Run => {
 const treeOf = (cwd: string): string =>
 	execFileSync(join(root, "checks", "worktree-tree"), [], { cwd, encoding: "utf8" }).trim();
 
-/** changed-files' failure message, from the Bead; a send-back carries it whole. */
+/** The message changed-files prints, whose closing instruction is the Bead's; a send-back carries it whole. */
 const changedFilesFailure =
 	"changed-files: the work changed no files from the tree the node started on. Make the change the task asks for and commit it; an empty commit does not count.";
 
@@ -166,7 +166,7 @@ test("a failing check sends the agent back with the check's message, and a later
 		assert.equal(run.requests.length, 3);
 		const sentBack = sentBacksOf(run);
 		assert.equal(sentBack.length, 1);
-		assert.match(textOf(sentBack[0]), /changed-files: the work changed no files from the tree the node started on\./);
+		assert.ok(textOf(sentBack[0]).includes(changedFilesFailure), textOf(sentBack[0]));
 		assert.match(run.requests[1].messages.join("\n"), /changed-files: the work changed no files/);
 	} finally {
 		clearWorkspace(workspace);
@@ -307,7 +307,7 @@ test("a node's start tree is kept in its Run's artifacts folder, so an attempt a
 		assert.equal(control.requests.length, 3);
 		const sentBack = sentBacksOf(control);
 		assert.equal(sentBack.length, 2);
-		assert.match(textOf(sentBack[0]), /changed-files: the work changed no files from the tree the node started on\./);
+		assert.ok(textOf(sentBack[0]).includes(changedFilesFailure), textOf(sentBack[0]));
 	} finally {
 		clearWorkspace(workspace);
 	}
@@ -337,7 +337,7 @@ test("a Bead's design field does not change a node's checks: they come only from
 		assert.equal(run.requests.length, 3);
 		const sentBack = sentBacksOf(run);
 		assert.equal(sentBack.length, 2);
-		assert.match(textOf(sentBack[0]), /changed-files: the work changed no files from the tree the node started on\./);
+		assert.ok(textOf(sentBack[0]).includes(changedFilesFailure), textOf(sentBack[0]));
 	} finally {
 		clearWorkspace(workspace);
 	}

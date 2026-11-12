@@ -297,13 +297,13 @@ const onBeforeSettle = (
 		return undefined;
 	}
 	session.sendBacks += 1;
-	const sendBack = `This is send-back ${String(session.sendBacks)} of ${String(MAX_SEND_BACKS)}; you may not finish until the checks pass.`;
+	const sendBackLine = `This is send-back ${String(session.sendBacks)} of ${String(MAX_SEND_BACKS)}; you may not finish until the checks pass.`;
 	return {
 		entries: [
 			{
 				type: "custom_message",
 				customType: "flows",
-				content: `${sendBack}\n\n${failures.join("\n\n")}`,
+				content: `${sendBackLine}\n\n${failures.join("\n\n")}`,
 				display: true,
 			},
 		],
