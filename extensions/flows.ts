@@ -4,9 +4,9 @@
  * A Workflow assigns checks to its nodes in a flows/ folder beside its YAML: one file per
  * node, named after the node, one check per line. A node's checks come only from that file,
  * so a Bead whose definition of done differs gets a forked Workflow. A checked node's
- * prompt carries the marker line README.md documents, naming the node, folders, and
- * optionally the Bead and check command. Its artifacts path must be absolute; a marker
- * naming any other is no marker at all, so a placeholder line cannot choose a working folder.
+ * prompt carries the marker line README.md documents, naming the node, folders and the
+ * optional check command. Its artifacts path must be absolute; a marker naming any other
+ * is no marker at all, so a placeholder line cannot choose a working folder.
  *
  * On pi 1.3.0's agent_before_settle, the last point where an extension can keep the agent
  * going, this extension reads the marker from the prompt through the handler's ctx, runs
@@ -56,12 +56,11 @@ import type {
 
 /**
  * What a checked node's prompt carries: the marker line README.md documents. The node and
- * folders are required, and the artifacts folder must be absolute; the Bead and check
- * command are optional, and no check reads the Bead.
+ * folders are required, and the artifacts folder must be absolute; the check command is
+ * optional, and a key the marker does not define is ignored.
  */
 type Marker = {
 	node: string;
-	bead?: string;
 	flows: string;
 	artifacts: string;
 	check?: string;
@@ -116,7 +115,7 @@ const markerIn = (text: string): Marker | undefined => {
 		return undefined;
 	}
 	if (typeof parsed !== "object" || parsed === null) return undefined;
-	const { node, bead, flows, artifacts, check } = parsed as Partial<Record<keyof Marker, unknown>>;
+	const { node, flows, artifacts, check } = parsed as Partial<Record<keyof Marker, unknown>>;
 	if (
 		typeof node !== "string" ||
 		typeof flows !== "string" ||
@@ -129,7 +128,6 @@ const markerIn = (text: string): Marker | undefined => {
 		node,
 		flows,
 		artifacts,
-		...(typeof bead === "string" ? { bead } : {}),
 		...(typeof check === "string" ? { check } : {}),
 	};
 };
