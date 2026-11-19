@@ -68,8 +68,7 @@ const clearWorkspace = (workspace: Workspace): void => rmSync(workspace.dir, { r
 /**
  * What a test may change about the marker line: the check, the artifacts folder, and the
  * bead field the Factory's node prompts still write though this package no longer reads
- * it. A field a test writes as undefined is left out of the line, the way a writer that
- * names none leaves it out, because JSON.stringify drops an undefined value.
+ * it.
  */
 type MarkerFields = { bead?: string; check?: string; artifacts?: string };
 
@@ -208,18 +207,7 @@ test("each send-back starts by naming which send-back it is of two, before the f
 	}
 });
 
-test("a marker with no check field still runs the node's checks", () => {
-	const workspace = makeWorkspace({ work: ["changed-files"] });
-	try {
-		const run = runPi(workspace, `${markerFor(workspace, "work")}\nDo the work.`, [{ text: "done" }]);
-		assert.equal(run.status, 0, run.stderr || run.stdout);
-		assert.equal(sentBacksOf(run).length, 2);
-	} finally {
-		clearWorkspace(workspace);
-	}
-});
-
-test("a marker with no bead field still runs the node's checks", () => {
+test("a marker with neither the bead nor the check field still runs the node's checks", () => {
 	const workspace = makeWorkspace({ work: ["changed-files"] });
 	try {
 		const marker = markerFor(workspace, "work");
