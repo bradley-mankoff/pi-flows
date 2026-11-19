@@ -328,6 +328,21 @@ test("the marker's check field is the command check-passes runs", () => {
 	}
 });
 
+test("a marker whose artifacts folder is the placeholder ... is not a marker, so the session is left alone", () => {
+	const workspace = makeWorkspace({ work: ["check-passes"] });
+	try {
+		mkdirSync(join(workspace.repo, "..."));
+		const placeholder = markerFor(workspace, "work", { artifacts: "...", check: "exit 1" });
+		const run = runPi(workspace, `${placeholder}\nDo the work.`, [{ text: "done" }]);
+		assert.equal(run.status, 0, run.stderr || run.stdout);
+		assert.equal(run.requests.length, 1);
+		assert.deepEqual(sentBacksOf(run), []);
+		assert.deepEqual(readdirSync(join(workspace.repo, "...")), []);
+	} finally {
+		clearWorkspace(workspace);
+	}
+});
+
 test("a Bead's design field does not change a node's checks: they come only from its flows file", () => {
 	const workspace = makeWorkspace({ work: ["changed-files"] });
 	try {
