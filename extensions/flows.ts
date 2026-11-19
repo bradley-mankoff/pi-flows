@@ -54,7 +54,11 @@ import type {
 	SessionStartEvent,
 } from "@earendil-works/pi-coding-agent";
 
-/** What a checked node's prompt carries: the marker line README.md documents. */
+/**
+ * What a checked node's prompt carries: the marker line README.md documents. The node and
+ * folders are required, and the artifacts folder must be absolute; the Bead and check
+ * command are optional, and no check reads the Bead.
+ */
 type Marker = {
 	node: string;
 	bead?: string;
