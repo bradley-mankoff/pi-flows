@@ -332,19 +332,12 @@ test("a marker whose artifacts folder is the placeholder ... is not a marker, so
 	const workspace = makeWorkspace({ work: ["check-passes"] });
 	try {
 		mkdirSync(join(workspace.repo, "..."));
-		const placeholder = `FLOWS ${JSON.stringify({
-			node: "work",
-			bead: "pi-flows-lav",
-			flows: workspace.flows,
-			artifacts: "...",
-			check: "exit 1",
-		})}`;
+		const placeholder = markerFor(workspace, "work", { artifacts: "...", check: "exit 1" });
 		const run = runPi(workspace, `${placeholder}\nDo the work.`, [{ text: "done" }]);
 		assert.equal(run.status, 0, run.stderr || run.stdout);
 		assert.equal(run.requests.length, 1);
 		assert.deepEqual(sentBacksOf(run), []);
-		assert.equal(existsSync(join(workspace.repo, "...", "flows-start-tree")), false);
-		assert.equal(existsSync(join(workspace.repo, "...", "flows-failed.txt")), false);
+		assert.deepEqual(readdirSync(join(workspace.repo, "...")), []);
 	} finally {
 		clearWorkspace(workspace);
 	}

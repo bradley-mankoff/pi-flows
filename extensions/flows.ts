@@ -5,9 +5,8 @@
  * node, named after the node, one check per line. A node's checks come only from that file,
  * so a Bead whose definition of done differs gets a forked Workflow. A checked node's
  * prompt carries the marker line README.md documents, naming the node, Bead, folders and
- * the optional check command. Its folders are absolute paths; a marker whose artifacts
- * path is not absolute is no marker at all, so a placeholder line cannot choose a working
- * folder.
+ * the optional check command. Its artifacts path must be absolute; a marker naming any
+ * other is no marker at all, so a placeholder line cannot choose a working folder.
  *
  * On pi 1.3.0's agent_before_settle, the last point where an extension can keep the agent
  * going, this extension reads the marker from the prompt through the handler's ctx, runs
@@ -190,7 +189,7 @@ const runCheck = (
 
 /** Record the checks still failing when the agent may finish anyway. */
 const recordFailures = (marker: Marker, failures: string[]): void => {
-	if (failures.length === 0 || marker.artifacts === "") return;
+	if (failures.length === 0) return;
 	try {
 		mkdirSync(marker.artifacts, { recursive: true });
 		const lines = failures.map((failure) => `${marker.node}: ${failure}`).join("\n");
@@ -212,7 +211,6 @@ const newSession = (ctx: ExtensionContext): Session => ({ startTree: startTree(c
  * of taking the tree it opens on, so the work's own commit does not become the baseline.
  */
 const keepStartTree = (session: Session, marker: Marker): void => {
-	if (marker.artifacts === "") return;
 	const path = join(marker.artifacts, "flows-start-tree");
 	try {
 		const keptTree = existsSync(path) ? readFileSync(path, "utf8").trim() : "";
