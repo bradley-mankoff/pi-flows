@@ -65,17 +65,21 @@ const writeBead = (workspace: Workspace, design: string): void => {
 
 const clearWorkspace = (workspace: Workspace): void => rmSync(workspace.dir, { recursive: true, force: true });
 
-/** What a test may change about the marker's optional fields: the check, and the artifacts folder. */
-type MarkerFields = { check?: string; artifacts?: string };
+/**
+ * What a test may change about the marker's fields: the Bead, the check, and the artifacts
+ * folder. A field a test writes as undefined is left out of the line, the way a Workflow
+ * that names none leaves it out, because JSON.stringify drops an undefined value.
+ */
+type MarkerFields = { bead?: string; check?: string; artifacts?: string };
 
-/** The marker line README.md documents: the node, Bead, paths and optional check. */
+/** The marker line README.md documents: the node, the made-up Bead, the paths and optional check. */
 const markerFor = (workspace: Workspace, node: string, fields: MarkerFields = {}): string =>
 	`FLOWS ${JSON.stringify({
 		node,
 		bead: "pi-flows-1",
 		flows: workspace.flows,
-		artifacts: fields.artifacts ?? workspace.artifacts,
-		...(fields.check === undefined ? {} : { check: fields.check }),
+		artifacts: workspace.artifacts,
+		...fields,
 	})}`;
 
 const sessionFiles = (dir: string): string[] =>
@@ -204,15 +208,21 @@ test("each send-back starts by naming which send-back it is of two, before the f
 	}
 });
 
-test("a marker with no workflow field still runs the node's checks", () => {
+test("a marker with no check field still runs the node's checks", () => {
 	const workspace = makeWorkspace({ work: ["changed-files"] });
 	try {
-		const marker = `FLOWS ${JSON.stringify({
-			node: "work",
-			bead: "pi-flows-1",
-			flows: workspace.flows,
-			artifacts: workspace.artifacts,
-		})}`;
+		const run = runPi(workspace, `${markerFor(workspace, "work")}\nDo the work.`, [{ text: "done" }]);
+		assert.equal(run.status, 0, run.stderr || run.stdout);
+		assert.equal(sentBacksOf(run).length, 2);
+	} finally {
+		clearWorkspace(workspace);
+	}
+});
+
+test("a marker with no bead field still runs the node's checks", () => {
+	const workspace = makeWorkspace({ work: ["changed-files"] });
+	try {
+		const marker = markerFor(workspace, "work", { bead: undefined });
 		const run = runPi(workspace, `${marker}\nDo the work.`, [{ text: "done" }]);
 		assert.equal(run.status, 0, run.stderr || run.stdout);
 		assert.equal(sentBacksOf(run).length, 2);
