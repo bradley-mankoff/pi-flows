@@ -12,10 +12,11 @@
  * so the marker leaves no trace in a session. The Factory's docs scan took the same seam for
  * the same bug. The marker's rule is restated here rather than exported from the extension for
  * the test: in a text the first line that trims to start with FLOWS decides, and it is a marker
- * only when its JSON names a string node, flows and artifacts, the artifacts folder absolute,
- * and a string check when it carries one. A change to the parser needs this scan changed with
- * it; the second test holds the scan to a known-good marker, so the empty result is a pass and
- * not a rule that matches nothing.
+ * only when its JSON names a string node, flows and artifacts and the artifacts folder is
+ * absolute; a check that is not a string is dropped, which leaves a marker with no check
+ * command. A change to the parser needs this scan changed with it; the second test holds the
+ * scan to a known-good marker, so the empty result is a pass and not a rule that matches
+ * nothing.
  */
 import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -27,14 +28,14 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Folders that hold no file this repo ships: git's own, the Beads database, installed modules. */
-const skipped = new Set([".git", ".beads", "node_modules"]);
+const skippedFolders = new Set([".git", ".beads", "node_modules"]);
 
 /** Every file under a folder, skipping the folders above, in one order whatever the disk says. */
 const files = (folder: string): string[] =>
 	readdirSync(folder, { withFileTypes: true })
 		.sort((a, b) => a.name.localeCompare(b.name))
 		.flatMap((entry) => {
-			if (skipped.has(entry.name)) return [];
+			if (skippedFolders.has(entry.name)) return [];
 			const path = join(folder, entry.name);
 			return entry.isDirectory() ? files(path) : [path];
 		});
@@ -56,8 +57,10 @@ const markerLine = (text: string): number | undefined => {
 	}
 	if (typeof parsed !== "object" || parsed === null) return undefined;
 	const { node, flows, artifacts } = parsed as Record<string, unknown>;
-	if (![node, flows, artifacts].every((field) => typeof field === "string")) return undefined;
-	return isAbsolute(artifacts as string) ? index + 1 : undefined;
+	if (typeof node !== "string" || typeof flows !== "string" || typeof artifacts !== "string") {
+		return undefined;
+	}
+	return isAbsolute(artifacts) ? index + 1 : undefined;
 };
 
 /** Each file the package would read a marker in, as `<file>:<line>` relative to the folder. */

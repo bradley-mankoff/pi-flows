@@ -16,7 +16,7 @@ FLOWS {"node":"work","flows":"flows","artifacts":"artifacts","check":"npm test"}
 ```
 
 The example's folders are relative, so a session that opens this file carries no marker; a
-Run's marker names both folders absolutely.
+Run's marker names its artifacts folder with an absolute path.
 
 A node's checks live only in its flows file. Nothing else replaces them: a Bead whose
 definition of done differs gets a forked Workflow with that node's flows file.
