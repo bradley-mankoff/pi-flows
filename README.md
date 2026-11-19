@@ -21,7 +21,7 @@ definition of done differs gets a forked Workflow with that node's flows file.
 - `node`: the node's name; it prefixes each line of the failure report in `flows-failed.txt`.
 - `bead`: the Bead the node works on; required, but no check reads it.
 - `flows`: folder holding one file per node, named after the node, one check per line.
-- `artifacts`: folder for the Run's notes; a check still failing at the end is written to `flows-failed.txt` there.
+- `artifacts`: folder for the Run's notes; a check still failing at the end is written to `flows-failed.txt` there. Its path must be absolute, because a marker whose artifacts path is not absolute is ignored rather than allowed to choose a folder.
 - `check`: optional; the command `check-passes` runs.
 
 ## What a send-back says
