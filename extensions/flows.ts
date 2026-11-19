@@ -4,9 +4,9 @@
  * A Workflow assigns checks to its nodes in a flows/ folder beside its YAML: one file per
  * node, named after the node, one check per line. A node's checks come only from that file,
  * so a Bead whose definition of done differs gets a forked Workflow. A checked node's
- * prompt carries the marker line README.md documents, naming the node, Bead, folders and
- * the optional check command. Its artifacts path must be absolute; a marker naming any
- * other is no marker at all, so a placeholder line cannot choose a working folder.
+ * prompt carries the marker line README.md documents, naming the node, folders, and
+ * optionally the Bead and check command. Its artifacts path must be absolute; a marker
+ * naming any other is no marker at all, so a placeholder line cannot choose a working folder.
  *
  * On pi 1.3.0's agent_before_settle, the last point where an extension can keep the agent
  * going, this extension reads the marker from the prompt through the handler's ctx, runs
@@ -57,7 +57,7 @@ import type {
 /** What a checked node's prompt carries: the marker line README.md documents. */
 type Marker = {
 	node: string;
-	bead: string;
+	bead?: string;
 	flows: string;
 	artifacts: string;
 	check?: string;
@@ -115,14 +115,19 @@ const markerIn = (text: string): Marker | undefined => {
 	const { node, bead, flows, artifacts, check } = parsed as Partial<Record<keyof Marker, unknown>>;
 	if (
 		typeof node !== "string" ||
-		typeof bead !== "string" ||
 		typeof flows !== "string" ||
 		typeof artifacts !== "string" ||
 		!isAbsolute(artifacts)
 	) {
 		return undefined;
 	}
-	return { node, bead, flows, artifacts, ...(typeof check === "string" ? { check } : {}) };
+	return {
+		node,
+		flows,
+		artifacts,
+		...(typeof bead === "string" ? { bead } : {}),
+		...(typeof check === "string" ? { check } : {}),
+	};
 };
 
 /** The marker in a session's prompt: the system prompt first, then the conversation. */

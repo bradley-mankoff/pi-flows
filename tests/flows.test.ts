@@ -221,6 +221,22 @@ test("a marker with no workflow field still runs the node's checks", () => {
 	}
 });
 
+test("a marker with no bead field still runs the node's checks", () => {
+	const workspace = makeWorkspace({ work: ["changed-files"] });
+	try {
+		const marker = `FLOWS ${JSON.stringify({
+			node: "work",
+			flows: workspace.flows,
+			artifacts: workspace.artifacts,
+		})}`;
+		const run = runPi(workspace, `${marker}\nDo the work.`, [{ text: "done" }]);
+		assert.equal(run.status, 0, run.stderr || run.stdout);
+		assert.equal(sentBacksOf(run).length, 2);
+	} finally {
+		clearWorkspace(workspace);
+	}
+});
+
 test("a session whose prompt carries no node marker is left alone", () => {
 	const workspace = makeWorkspace({ work: ["changed-files"] });
 	try {

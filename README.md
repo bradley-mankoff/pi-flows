@@ -19,7 +19,7 @@ A node's checks live only in its flows file. Nothing else replaces them: a Bead 
 definition of done differs gets a forked Workflow with that node's flows file.
 
 - `node`: the node's name; it prefixes each line of the failure report in `flows-failed.txt`.
-- `bead`: the Bead the node works on; required, but no check reads it.
+- `bead`: optional; the Bead the node works on, which no check reads.
 - `flows`: folder holding one file per node, named after the node, one check per line.
 - `artifacts`: folder for the Run's notes; a check still failing at the end is written to `flows-failed.txt` there. Its path must be absolute; a marker naming a relative path is ignored, so a placeholder cannot choose a folder.
 - `check`: optional; the command `check-passes` runs.
